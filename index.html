@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Games</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+  <link rel="stylesheet" href="./common.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Games</h1>
+    <div class="topbar-right">
+      <span class="pill" id="pwaStatus">Offline-ready</span>
+    </div>
+  </header>
+
+  <main class="hub">
+    <section class="card">
+      <h2>Pick a game</h2>
+      <div class="grid">
+        <a class="gameTile" href="./sudoku/">
+          <div class="gameTitle">Sudoku</div>
+          <div class="gameDesc">Classic 9×9 logic puzzle</div>
+        </a>
+
+        <a class="gameTile" href="./nonogram/">
+          <div class="gameTitle">Nonogram</div>
+          <div class="gameDesc">Picture-cross / griddler</div>
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Offline</h2>
+      <p class="muted">
+        Install this app to play offline. Once you’ve opened each game at least once, they’ll be available without internet.
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Hosted on Cloudflare Pages</span>
+  </footer>
+
+  <script src="./common.js"></script>
+  <script>
+    // Register SW once, at the site root
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+        } catch {}
+      });
+    }
+  </script>
+</body>
+</html>

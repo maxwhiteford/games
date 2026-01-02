@@ -5,13 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sudoku</title>
 
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#0b1020" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-
+  <link rel="stylesheet" href="../common.css" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -102,32 +96,7 @@
     </div>
   </div>
 
-  <footer class="footer">
-    <span>Hosted on Cloudflare Pages</span>
-  </footer>
-
   <script src="./app.js"></script>
 
-  <!-- Service Worker registration -->
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", async () => {
-        try {
-          const reg = await navigator.serviceWorker.register("./sw.js", { scope: "./" });
-
-          // Optional: prompt users to refresh when a new SW takes over
-          navigator.serviceWorker.addEventListener("controllerchange", () => {
-            // A new version is active; reload to pick up new assets
-            window.location.reload();
-          });
-
-          // Optional: quick debug in console
-          // console.log("SW registered", reg);
-        } catch (e) {
-          // console.warn("SW registration failed", e);
-        }
-      });
-    }
-  </script>
 </body>
 </html>
