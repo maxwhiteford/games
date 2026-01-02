@@ -169,23 +169,32 @@ button:disabled{
 .cell.given .val{color: rgba(233,236,255,0.92)}
 .cell:not(.given) .val{color: rgba(122,162,255,0.95)}
 
-.cell .notes{
-  position:absolute;
-  inset:4px;
-  display:grid;
+.cell .notes {
+  position: absolute;
+  inset: 2px;
+  display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap:1px;
-  font-size:10px;
+  gap: 0;
+  font-size: 10px;
   color: rgba(233,236,255,0.65);
+  pointer-events: none;
 }
+
 .cell .notes span{
   display:flex;
   align-items:center;
   justify-content:center;
   opacity:0;
+  line-height: 1;
 }
 .cell .notes span.on{opacity:1}
+
+@media (max-width: 420px) {
+  .cell .notes {
+    font-size: 9px;
+  }
+}
 
 /* Block borders */
 .cell:nth-child(3n):not(:nth-child(9n)){

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Nonogram</title>
+
+  <link rel="stylesheet" href="../common.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Nonogram</h1>
+    <div class="topbar-right">
+      <a class="pill" href="../">← Games</a>
+    </div>
+  </header>
+
+  <main class="hub">
+    <section class="card">
+      <div class="ngTop">
+        <div class="ngLeft">
+          <div class="ngTitle">Nonogram</div>
+          <div class="muted" id="ngSubtitle">Fill the correct cells using the clues.</div>
+        </div>
+
+        <div class="ngControls">
+          <label class="ngSelectWrap">
+            <span class="muted ngLabel">Puzzle</span>
+            <select id="puzzleSelect"></select>
+          </label>
+
+          <div class="ngBtnRow">
+            <button id="btnNew">New</button>
+            <button id="btnReset">Reset</button>
+            <button id="btnCheck">Check</button>
+          </div>
+
+          <div class="ngBtnRow">
+            <button id="toolFill" class="tool active" aria-pressed="true">Fill</button>
+            <button id="toolMark" class="tool" aria-pressed="false">Mark ✕</button>
+            <button id="btnUndo" disabled>Undo</button>
+            <button id="btnRedo" disabled>Redo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ngGame">
+        <div id="ngCorner" class="ngCorner" aria-hidden="true"></div>
+
+        <div id="ngColClues" class="ngColClues" aria-label="Column clues"></div>
+        <div id="ngRowClues" class="ngRowClues" aria-label="Row clues"></div>
+
+        <div id="ngGrid" class="ngGrid" aria-label="Nonogram grid"></div>
+      </div>
+
+      <div class="ngStatusRow">
+        <p id="ngStatus" class="muted">Ready.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>How to play</h2>
+      <ul>
+        <li><b>Fill</b> cells that should be black.</li>
+        <li><b>Mark ✕</b> cells that should be empty (optional but helpful).</li>
+        <li>Numbers show runs of consecutive filled cells in that row/column.</li>
+        <li>Drag to paint quickly. On desktop, right-click toggles Mark.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

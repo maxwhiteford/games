@@ -1,0 +1,164 @@
+.ngTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.ngLeft{min-width: 220px;}
+.ngTitle{font-weight:800; font-size:18px; margin-bottom:4px;}
+
+.ngControls{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-width: min(560px, 100%);
+}
+
+.ngSelectWrap{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.ngLabel{font-size:12px;}
+#puzzleSelect{
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.10);
+  padding:10px 12px;
+  border-radius: 12px;
+  cursor:pointer;
+  min-width: 260px;
+}
+
+.ngBtnRow{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.tool.active{
+  border-color: rgba(122,162,255,0.9);
+  box-shadow: inset 0 0 0 1px rgba(122,162,255,0.35);
+}
+
+.ngGame{
+  margin-top: 14px;
+  display:grid;
+  /* corner | col clues */
+  grid-template-columns: auto 1fr;
+  /* row clues | grid */
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+  align-items:start;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+
+/* Corner placeholder matches clue gutters */
+.ngCorner{
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+}
+
+.ngColClues{
+  display:grid;
+  gap: 2px;
+}
+.ngRowClues{
+  display:grid;
+  gap: 2px;
+}
+
+.clueCell{
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  padding: 6px;
+  display:flex;
+  gap: 4px;
+  color: rgba(233,236,255,0.85);
+  font-size: 12px;
+  line-height: 1;
+  user-select:none;
+}
+
+.clueCell.col{
+  justify-content:flex-end;
+  align-items:flex-end;
+  flex-direction:column;
+  min-height: 40px;
+}
+
+.clueCell.row{
+  justify-content:flex-end;
+  align-items:center;
+  min-width: 80px;
+}
+
+.clueCell.done{
+  opacity: 0.55;
+}
+
+.clueNums{
+  display:flex;
+  gap: 4px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.clueCell.col .clueNums{
+  flex-direction:column;
+  align-items:flex-end;
+}
+
+.ngGrid{
+  display:grid;
+  gap: 0;
+  border: 2px solid rgba(255,255,255,0.18);
+  border-radius: 14px;
+  overflow:hidden;
+  background: rgba(10,14,30,0.25);
+  touch-action: none; /* enable pointer drag painting on mobile */
+}
+
+.ngCell{
+  border:1px solid rgba(255,255,255,0.08);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+  cursor:pointer;
+  font-weight: 900;
+}
+
+.ngCell.filled{
+  background: rgba(122,162,255,0.25);
+}
+
+.ngCell.marked{
+  background: rgba(255,255,255,0.03);
+  color: rgba(233,236,255,0.70);
+}
+
+.ngCell.bad{
+  outline: 2px solid rgba(255,107,107,0.7);
+  outline-offset: -2px;
+}
+
+/* Thicker block separators for readability (5x5 blocks if size>=10) */
+.ngCell.blockR{
+  border-bottom: 2px solid rgba(255,255,255,0.18);
+}
+.ngCell.blockC{
+  border-right: 2px solid rgba(255,255,255,0.18);
+}
+
+.ngStatusRow{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
