@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sudoku</title>
+
+  <link rel="stylesheet" href="../common.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Sudoku</h1>
+    <div class="topbar-right">
+      <span class="timer" id="timer" aria-label="Timer">00:00</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="boardWrap" id="gameWrap">
+      <!-- This wrapper will be blurred/disabled when paused -->
+      <div id="gameContent">
+        <div class="gameTop">
+          <!-- App menu (Continue/Reset/Solve live here) -->
+          <details class="menu" id="appMenu">
+            <summary aria-label="App menu" class="menuBtn">☰</summary>
+            <div class="menuPanel" role="menu" aria-label="Game menu">
+              <button id="continue" role="menuitem" disabled>Continue</button>
+              <button id="reset" role="menuitem">Reset</button>
+              <button id="solve" role="menuitem">Solve</button>
+            </div>
+          </details>
+
+          <!-- New game with difficulty -->
+          <details class="menu" id="newMenu">
+            <summary class="newBtn" id="newSummary" aria-label="New game">
+              New: <span id="newDifficultyLabel">Medium</span>
+            </summary>
+            <div class="menuPanel" role="menu" aria-label="New game difficulty">
+              <button class="newDiff" data-diff="easy" role="menuitem">Easy</button>
+              <button class="newDiff" data-diff="medium" role="menuitem">Medium</button>
+              <button class="newDiff" data-diff="hard" role="menuitem">Hard</button>
+              <button class="newDiff" data-diff="expert" role="menuitem">Expert</button>
+            </div>
+          </details>
+        </div>
+
+        <div id="board" class="board" role="grid" aria-label="Sudoku board"></div>
+
+        <!-- Keypad row: numbers 1-9 in a single row -->
+        <div class="keypadRow" aria-label="Number keypad">
+          <button class="key keyNum" data-key="1">1</button>
+          <button class="key keyNum" data-key="2">2</button>
+          <button class="key keyNum" data-key="3">3</button>
+          <button class="key keyNum" data-key="4">4</button>
+          <button class="key keyNum" data-key="5">5</button>
+          <button class="key keyNum" data-key="6">6</button>
+          <button class="key keyNum" data-key="7">7</button>
+          <button class="key keyNum" data-key="8">8</button>
+          <button class="key keyNum" data-key="9">9</button>
+        </div>
+
+        <!-- Control row under keypad -->
+        <div class="controlRow" aria-label="Game controls">
+          <button id="check">Check</button>
+          <button id="notes">Notes: Off</button>
+          <button id="undo" disabled>Undo</button>
+          <button id="redo" disabled>Redo</button>
+          <button id="erase">Erase</button>
+          <button id="pause">Pause</button>
+        </div>
+
+        <div class="statusWrap">
+          <p id="status" class="status" aria-live="polite">Ready.</p>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Tips</h2>
+        <ul>
+          <li>Install the app for offline use.</li>
+          <li>Progress saves automatically on this device.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Overlay moved up a level in the DOM so it stays crisp and clickable -->
+  <div class="pauseOverlay" id="pauseOverlay" aria-hidden="true">
+    <div class="pauseCard" role="dialog" aria-modal="true" aria-label="Paused">
+      <div class="pauseTitle">Paused</div>
+      <div class="pauseHint">Your timer is stopped. Tap Resume to continue.</div>
+      <button id="resume" class="resumeBtn">Resume</button>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+
+</body>
+</html>
