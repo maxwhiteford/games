@@ -82,19 +82,19 @@
 .ngColClues{
   display:grid;
   grid-template-columns: repeat(var(--ngSize), var(--ngCell));
-  gap: 2px;
+  gap: 0; /* IMPORTANT: must match grid width exactly */
 }
 
 .ngRowClues{
   display:grid;
   grid-template-rows: repeat(var(--ngSize), var(--ngCell));
-  gap: 2px;
+  gap: 0; /* IMPORTANT: must match grid height exactly */
 }
 
 /* Clue cells */
 .clueCell{
   border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 10px;
+  border-radius: 0; /* keeps internal edges flush */
   background: rgba(255,255,255,0.03);
   padding: 6px;
   display:flex;
