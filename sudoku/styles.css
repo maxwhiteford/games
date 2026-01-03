@@ -5,7 +5,7 @@
   --accent:#7aa2ff;
   --bad:#ff6b6b;
   --good:#43d19e;
-  --cell:46px;
+  --cell: 44px;
   --radius:14px;
 }
 
@@ -62,6 +62,7 @@ body{
   border:1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius);
   padding:14px;
+  max-width: 100%;
 }
 
 .gameTop{
@@ -142,13 +143,6 @@ button:disabled{
   overflow:hidden;
 }
 
-@media (max-width: 430px){
-  :root{ --cell: 40px; }
-}
-@media (max-width: 360px){
-  :root{ --cell: 36px; }
-}
-
 .cell{
   position:relative;
   display:flex;
@@ -190,7 +184,16 @@ button:disabled{
 }
 .cell .notes span.on{opacity:1}
 
-@media (max-width: 420px) {
+@media (max-width: 480px){
+  :root{--cell: 42px;}
+}
+
+@media (max-width: 440px){
+  :root{--cell: 39px;}
+}
+@media (max-width: 420px){
+  :root{ --cell: 36px; }
+  
   .cell .notes {
     font-size: 9px;
   }
