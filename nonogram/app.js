@@ -1,4 +1,5 @@
-/* Fully functional Nonogram
+/* Nonogram
+   - Dynamic cell sizing via CSS variables (responsive + square)
    - Clues rendering (rows + cols)
    - Fill/Mark tools + right-click marking (desktop)
    - Drag painting (pointer events)
@@ -24,7 +25,6 @@ const els = {
   subtitle: document.getElementById("ngSubtitle"),
 };
 
-// Puzzles: store solution as array of strings rows ("#"/".") for readability.
 const PUZZLES = [
   {
     id: "plus-5",
@@ -144,7 +144,6 @@ function currentColClues() {
 }
 
 function playerRowClues(r) {
-  // Only filled cells count for clues; marks are treated as empty
   const bits = getRowBits(state.map(v => (v === 1 ? 1 : 0)), r);
   return calcCluesForLine(bits);
 }
@@ -215,8 +214,7 @@ function applyToolUi() {
 function setTool(next) {
   tool = next;
   applyToolUi();
-  const p = currentPuzzle();
-  saveProgress(p.id);
+  saveProgress(currentPuzzle().id);
 }
 
 function currentPuzzle() {
@@ -234,37 +232,77 @@ function buildPuzzleSelect() {
   }
 }
 
-function buildLayout() {
-  // Decide cell size: responsive
-  // We'll set CSS variables by inline style for grid template.
-  els.grid.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-  els.grid.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+/* -------- Dynamic sizing via CSS variables --------
+   Goal: pick a cell size that fits the available viewport width nicely,
+   but keep it within a comfortable tap range.
+*/
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
-  // Set a reasonable square size via max width: grid will fill available.
-  // Corner size based on max row clues width and max col clues height.
-}
+function computeCellSize() {
+  // Available width: inside the card content area (ngGame scroll container width)
+  const gameEl = els.grid.closest(".ngGame");
+  const gameRect = gameEl.getBoundingClientRect();
 
-function renderClues() {
+  // Estimate row clue gutter width: based on max clue count (like we do for corner sizing)
   const rowClues = currentRowClues();
   const colClues = currentColClues();
 
-  // Determine gutters
   const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
   const maxColClueCount = Math.max(...colClues.map(c => c.length));
 
-  // Corner sizing: give enough area for column clues height and row clue width
-  // Each clue "line" roughly 14px. We'll use CSS by inline styles.
+  // Gutters: these match renderClues() sizing
+  const rowGutterW = Math.max(80, maxRowClueCount * 18);
+  const gap = 10; // matches --ngGap in CSS
+  const paddingSafety = 6;
+
+  // Compute width we can give to the grid in the second column
+  const availableGridW = Math.max(
+    180,
+    Math.floor(gameRect.width - rowGutterW - gap - paddingSafety)
+  );
+
+  // Also consider height: on small screens, don't exceed ~60vh for the grid area
+  const availableGridH = Math.floor(window.innerHeight * 0.60);
+
+  const maxGridPx = Math.max(160, Math.min(availableGridW, availableGridH));
+  const rawCell = Math.floor(maxGridPx / size);
+
+  // Tap-friendly bounds:
+  // - Minimum 18px so clues/marks remain readable
+  // - Maximum 44px so 5x5 doesn’t become comically huge
+  return clamp(rawCell, 18, 44);
+}
+
+function buildLayout() {
+  const cell = computeCellSize();
+
+  // Set CSS vars (on document root so row/col clues + grid share it)
+  document.documentElement.style.setProperty("--ngSize", String(size));
+  document.documentElement.style.setProperty("--ngCell", `${cell}px`);
+
+  // Corner sizing depends on clue depth
+  const rowClues = currentRowClues();
+  const colClues = currentColClues();
+  const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
+  const maxColClueCount = Math.max(...colClues.map(c => c.length));
+
   const cornerW = Math.max(80, maxRowClueCount * 18);
   const cornerH = Math.max(40, maxColClueCount * 16);
 
   els.corner.style.width = `${cornerW}px`;
   els.corner.style.height = `${cornerH}px`;
 
-  els.rowClues.style.gridTemplateRows = `repeat(${size}, auto)`;
   els.rowClues.style.width = `${cornerW}px`;
-
-  els.colClues.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
   els.colClues.style.height = `${cornerH}px`;
+
+  // Slightly scale mark glyph with cell size
+  const markFont = clamp(Math.floor(cell * 0.60), 12, 22);
+  els.grid.style.setProperty("font-size", `${markFont}px`);
+}
+
+function renderClues() {
+  const rowClues = currentRowClues();
+  const colClues = currentColClues();
 
   // Render row clues
   els.rowClues.innerHTML = "";
@@ -360,7 +398,6 @@ function applyCell(i, toVal) {
   state[i] = toVal;
 
   if (!strokeChanges) strokeChanges = new Map();
-  // First change in this stroke determines original "from"
   if (!strokeChanges.has(i)) strokeChanges.set(i, { from, to: toVal });
   else strokeChanges.get(i).to = toVal;
 
@@ -371,17 +408,11 @@ function beginStroke(targetIndex, forcedTool = null) {
   isPointerDown = true;
   strokeChanges = new Map();
 
-  // Determine "paintTo" based on current tool and target state
   const usingTool = forcedTool || tool;
   const cur = state[targetIndex];
 
-  if (usingTool === "fill") {
-    // toggle fill: empty/marked -> filled, filled -> empty
-    paintTo = (cur === 1) ? 0 : 1;
-  } else {
-    // toggle mark: empty/filled -> marked, marked -> empty
-    paintTo = (cur === 2) ? 0 : 2;
-  }
+  if (usingTool === "fill") paintTo = (cur === 1) ? 0 : 1;
+  else paintTo = (cur === 2) ? 0 : 2;
 
   applyCell(targetIndex, paintTo);
   renderGrid();
@@ -397,7 +428,6 @@ function commitStroke() {
     return;
   }
 
-  // Record undo as an array of {i,from,to}
   const step = [];
   for (const [i, change] of strokeChanges.entries()) {
     step.push({ i, from: change.from, to: change.to });
@@ -408,20 +438,14 @@ function commitStroke() {
   redoStack = [];
   updateUndoRedoButtons();
 
-  const p = currentPuzzle();
-  saveProgress(p.id);
+  saveProgress(currentPuzzle().id);
 
   strokeChanges = null;
 
-  // If solved, announce
-  if (isSolved()) {
-    setStatus("Solved! 🎉");
-  }
+  if (isSolved()) setStatus("Solved! 🎉");
 }
 
 function isSolved() {
-  // Must match filled cells exactly to solution.
-  // Marks don't matter (treated as empty).
   for (let i = 0; i < size * size; i++) {
     const filled = state[i] === 1;
     const shouldFill = solution[i] === 1;
@@ -431,7 +455,6 @@ function isSolved() {
 }
 
 function checkAgainstSolution() {
-  // Mark incorrect filled cells as bad (simple feedback).
   const cells = els.grid.querySelectorAll(".ngCell");
   cells.forEach(c => c.classList.remove("bad"));
 
@@ -484,43 +507,29 @@ function startPuzzle(puzId, { forceNew = false } = {}) {
   size = puz.size;
   solution = parseSolutionRows(puz);
 
-  // Fresh state
   state = new Array(size * size).fill(0);
   undoStack = [];
   redoStack = [];
   applyToolUi();
 
-  // Try load saved progress unless forceNew
-  if (!forceNew) {
-    loadProgress(puz.id);
-  } else {
-    // clearing old progress is optional; we reset state anyway
-    saveProgress(puz.id);
-  }
+  if (!forceNew) loadProgress(puz.id);
+  else saveProgress(puz.id);
 
-  // Adjust subtitle
-  els.subtitle.textContent =
-    `Puzzle: ${puz.name} • ${size}×${size} • Drag to paint`;
+  els.subtitle.textContent = `Puzzle: ${puz.name} • ${size}×${size} • Drag to paint`;
 
   renderAll();
-
   setStatus(forceNew ? "New puzzle started." : "Loaded puzzle.");
 }
 
 function bindInput() {
-  // Disable context menu on grid so right-click works for marking
   els.grid.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  // Pointer painting
   els.grid.addEventListener("pointerdown", (e) => {
     const cell = e.target.closest(".ngCell");
     if (!cell) return;
 
     els.grid.setPointerCapture(e.pointerId);
-
     const i = Number(cell.dataset.i);
-
-    // On desktop, right click => force mark tool for this stroke
     const forced = (e.button === 2) ? "mark" : null;
 
     beginStroke(i, forced);
@@ -535,7 +544,6 @@ function bindInput() {
     const i = Number(cell.dataset.i);
     const changed = applyCell(i, paintTo);
     if (changed) {
-      // Update visuals without rebuilding everything
       const el = els.grid.children[i];
       el.classList.toggle("filled", state[i] === 1);
       el.classList.toggle("marked", state[i] === 2);
@@ -549,11 +557,9 @@ function bindInput() {
   els.grid.addEventListener("pointerup", end);
   els.grid.addEventListener("pointercancel", end);
 
-  // Tool buttons
   els.toolFill.addEventListener("click", () => setTool("fill"));
   els.toolMark.addEventListener("click", () => setTool("mark"));
 
-  // Controls
   els.btnReset.addEventListener("click", () => {
     resetProgress(currentPuzzle().id);
     setStatus("Reset.");
@@ -563,7 +569,6 @@ function bindInput() {
   els.btnRedo.addEventListener("click", redo);
 
   els.btnNew.addEventListener("click", () => {
-    // start the currently selected puzzle as a fresh run
     startPuzzle(els.puzzleSelect.value, { forceNew: true });
   });
 
@@ -571,7 +576,6 @@ function bindInput() {
     startPuzzle(els.puzzleSelect.value, { forceNew: false });
   });
 
-  // Keyboard shortcuts (desktop)
   window.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
@@ -587,12 +591,23 @@ function bindInput() {
   });
 }
 
+/* Debounced resize for responsive cell sizing */
+let resizeTimer = null;
+function onResize() {
+  if (resizeTimer) clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    // Recompute sizing + re-render clues (grid state preserved)
+    renderAll();
+  }, 80);
+}
+
 function boot() {
   buildPuzzleSelect();
   bindInput();
 
-  // Start with first puzzle
   startPuzzle(PUZZLES[0].id, { forceNew: false });
+
+  window.addEventListener("resize", onResize);
 }
 
 boot();
