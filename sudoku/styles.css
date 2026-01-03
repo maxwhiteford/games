@@ -1,47 +1,14 @@
+/* Sudoku-only styles
+   Relies on ../common.css for: :root(bg/text/muted/accent/radius), body, topbar, card, footer, etc.
+*/
+
 :root{
-  --bg:#0b1020;
-  --text:#e9ecff;
-  --muted:#aab2ff;
-  --accent:#7aa2ff;
   --bad:#ff6b6b;
   --good:#43d19e;
   --cell: 44px;
-  --radius:14px;
 }
 
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  background: radial-gradient(1200px 800px at 30% 10%, #18204a 0%, var(--bg) 55%);
-  color:var(--text);
-}
-
-.topbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:14px 16px;
-  border-bottom:1px solid rgba(255,255,255,0.06);
-  background:rgba(5,8,18,0.55);
-  backdrop-filter: blur(10px);
-  position:sticky;
-  top:0;
-  z-index:10;
-}
-
-.topbar h1{margin:0;font-size:18px;letter-spacing:.3px}
-.topbar-right{display:flex;align-items:center;gap:10px}
-
-.timer{
-  padding:8px 10px;
-  border:1px solid rgba(255,255,255,0.10);
-  border-radius:12px;
-  background: rgba(0,0,0,0.25);
-  font-variant-numeric: tabular-nums;
-}
-
+/* Layout for Sudoku page (not used by the hub) */
 .layout{
   display:grid;
   grid-template-columns: 1fr 320px;
@@ -131,12 +98,12 @@ button:disabled{
   border-radius: 12px;
 }
 
+/* Board */
 .board{
   display:grid;
   grid-template-columns: repeat(9, var(--cell));
   grid-template-rows: repeat(9, var(--cell));
-  width: calc(var(--cell) * 9);
-  max-width: 100%;
+  width: min(calc(var(--cell) * 9), 100%);
   margin: 0 auto 12px auto;
   border: 2px solid rgba(255,255,255,0.18);
   border-radius: 12px;
@@ -163,6 +130,7 @@ button:disabled{
 .cell.given .val{color: rgba(233,236,255,0.92)}
 .cell:not(.given) .val{color: rgba(122,162,255,0.95)}
 
+/* Notes */
 .cell .notes {
   position: absolute;
   inset: 2px;
@@ -183,21 +151,6 @@ button:disabled{
   line-height: 1;
 }
 .cell .notes span.on{opacity:1}
-
-@media (max-width: 480px){
-  :root{--cell: 42px;}
-}
-
-@media (max-width: 440px){
-  :root{--cell: 39px;}
-}
-@media (max-width: 420px){
-  :root{ --cell: 36px; }
-  
-  .cell .notes {
-    font-size: 9px;
-  }
-}
 
 /* Block borders */
 .cell:nth-child(3n):not(:nth-child(9n)){
@@ -232,9 +185,7 @@ button:disabled{
   margin: 0 auto;
 }
 @media (max-width: 520px){
-  .controlRow{
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .controlRow{ grid-template-columns: repeat(3, 1fr); }
 }
 
 .statusWrap{
@@ -244,26 +195,11 @@ button:disabled{
 }
 .status{margin:0; color: rgba(233,236,255,0.85)}
 
-.side .card{
-  background: rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius);
-  padding:16px;
-}
-.side h2{margin:0 0 10px 0; font-size:16px; color: rgba(233,236,255,0.95)}
-.side ul{margin:0; padding-left:18px; color: rgba(233,236,255,0.82)}
-
-.footer{
-  padding:16px;
-  text-align:center;
-  color: rgba(233,236,255,0.62);
-}
-
 /* ---- Pause: blur/disable gameContent, overlay stays crisp ---- */
 body.isPaused #gameContent{
   pointer-events: none;
   filter: blur(7px) saturate(0.9) brightness(0.9);
-  transform: translateZ(0); /* keep blur smooth on some browsers */
+  transform: translateZ(0);
 }
 
 .pauseOverlay{
@@ -277,9 +213,7 @@ body.isPaused #gameContent{
   padding: 18px;
 }
 
-body.isPaused .pauseOverlay{
-  display: flex;
-}
+body.isPaused .pauseOverlay{ display: flex; }
 
 .pauseCard{
   background: rgba(10,14,30,0.96);
@@ -300,6 +234,19 @@ body.isPaused .pauseOverlay{
   border-radius: 14px;
   border: 1px solid rgba(122,162,255,0.55);
 }
-.resumeBtn:hover{
-  border-color: rgba(122,162,255,0.9);
+.resumeBtn:hover{ border-color: rgba(122,162,255,0.9); }
+
+/* Cell sizing breakpoints */
+@media (max-width: 480px){
+  :root{ --cell: 42px; }
+}
+@media (max-width: 440px){
+  :root{ --cell: 39px; }
+}
+@media (max-width: 420px){
+  :root{ --cell: 36px; }
+  .cell .notes { font-size: 9px; }
+}
+@media (max-width: 360px){
+  :root{ --cell: 34px; }
 }
