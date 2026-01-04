@@ -5,6 +5,7 @@
   --ngSize: 5;
   --ngCell: 28px;
   --ngGap: 10px; /* matches grid gap in .ngGame */
+  --rowClueW: 72px; /* JS will set */
 }
 
 .ngTop{
@@ -89,6 +90,9 @@
   display:grid;
   grid-template-rows: repeat(var(--ngSize), var(--ngCell));
   gap: 0; /* IMPORTANT: must match grid height exactly */
+  
+  /* make gutter only as wide as needed */
+  width: fit-content;
 }
 
 /* Clue cells */
@@ -120,7 +124,8 @@
 
   /* match cell height */
   height: var(--ngCell);
-  min-width: 80px;
+  /* fixed, minimal width shared by all rows */
+  width: var(--rowClueW);
 }
 
 .clueCell.done{

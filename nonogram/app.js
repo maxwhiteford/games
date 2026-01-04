@@ -6,6 +6,7 @@
    - Undo/Redo (stroke grouped)
    - Reset/Check + solved detection
    - LocalStorage persistence per puzzle
+   - Compact row clue gutter (minimal width + consistent sizing)
 */
 
 const els = {
@@ -235,17 +236,33 @@ function buildPuzzleSelect() {
 /* -------- Dynamic sizing via CSS variables -------- */
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
+/* Updated: compute using a compact row clue gutter width variable (--rowClueW) */
+function computeRowClueWidth(cellPx) {
+  const rowClues = currentRowClues();
+  const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
+
+  // Scale clue font with cell size (must roughly match CSS)
+  const clueFont = clamp(Math.floor(cellPx * 0.42), 10, 12);
+
+  // Rough per-number width: budget for up to 2 digits plus breathing room
+  const perNum = Math.floor(clueFont * 1.6);
+  const gap = 4; // matches .clueNums { gap: 4px; }
+  const padding = 12; // clue cell padding (6px left+right)
+
+  const w = (maxRowClueCount * perNum) + Math.max(0, (maxRowClueCount - 1) * gap) + padding;
+
+  // Keep it compact on tiny screens; don't let it get silly large either.
+  return clamp(w, 48, 92);
+}
+
 function computeCellSize() {
   const gameEl = els.grid.closest(".ngGame");
   const gameRect = gameEl.getBoundingClientRect();
 
-  const rowClues = currentRowClues();
-  const colClues = currentColClues();
+  // First pass: assume a mid cell to estimate row clue gutter width
+  const assumedCell = 28;
+  const rowGutterW = computeRowClueWidth(assumedCell);
 
-  const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
-  const maxColClueCount = Math.max(...colClues.map(c => c.length));
-
-  const rowGutterW = Math.max(80, maxRowClueCount * 18);
   const gap = 10; // must match CSS var --ngGap
   const paddingSafety = 6;
 
@@ -255,7 +272,6 @@ function computeCellSize() {
   );
 
   const availableGridH = Math.floor(window.innerHeight * 0.60);
-
   const maxGridPx = Math.max(160, Math.min(availableGridW, availableGridH));
   const rawCell = Math.floor(maxGridPx / size);
 
@@ -268,17 +284,21 @@ function buildLayout() {
   document.documentElement.style.setProperty("--ngSize", String(size));
   document.documentElement.style.setProperty("--ngCell", `${cell}px`);
 
-  const rowClues = currentRowClues();
+  // Corner height still based on column clue depth
   const colClues = currentColClues();
-  const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
   const maxColClueCount = Math.max(...colClues.map(c => c.length));
-
-  const cornerW = Math.max(80, maxRowClueCount * 18);
   const cornerH = Math.max(40, maxColClueCount * 16);
 
-  els.corner.style.width = `${cornerW}px`;
+  // NEW: compact row clue gutter width driven by content
+  const rowClueW = computeRowClueWidth(cell);
+  document.documentElement.style.setProperty("--rowClueW", `${rowClueW}px`);
+
+  // Corner should match the row clue gutter width visually
+  els.corner.style.width = `${rowClueW}px`;
   els.corner.style.height = `${cornerH}px`;
-  els.rowClues.style.width = `${cornerW}px`;
+
+  // Do NOT force ngRowClues width anymore (CSS uses width: fit-content)
+  // els.rowClues.style.width = ...
   els.colClues.style.height = `${cornerH}px`;
 
   const markFont = clamp(Math.floor(cell * 0.60), 12, 22);
