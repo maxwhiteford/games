@@ -2,7 +2,7 @@
    - Dynamic cell sizing via CSS variables (responsive + square)
    - Clues rendering (rows + cols)
    - Fill/Mark tools + right-click marking (desktop)
-   - Drag painting (pointer events)
+   - Drag painting (pointer events) ✅ fixed via elementFromPoint hit-testing
    - Undo/Redo (stroke grouped)
    - Reset/Check + solved detection
    - LocalStorage persistence per puzzle
@@ -232,55 +232,42 @@ function buildPuzzleSelect() {
   }
 }
 
-/* -------- Dynamic sizing via CSS variables --------
-   Goal: pick a cell size that fits the available viewport width nicely,
-   but keep it within a comfortable tap range.
-*/
+/* -------- Dynamic sizing via CSS variables -------- */
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 function computeCellSize() {
-  // Available width: inside the card content area (ngGame scroll container width)
   const gameEl = els.grid.closest(".ngGame");
   const gameRect = gameEl.getBoundingClientRect();
 
-  // Estimate row clue gutter width: based on max clue count (like we do for corner sizing)
   const rowClues = currentRowClues();
   const colClues = currentColClues();
 
   const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
   const maxColClueCount = Math.max(...colClues.map(c => c.length));
 
-  // Gutters: these match renderClues() sizing
   const rowGutterW = Math.max(80, maxRowClueCount * 18);
-  const gap = 10; // matches --ngGap in CSS
+  const gap = 10; // must match CSS var --ngGap
   const paddingSafety = 6;
 
-  // Compute width we can give to the grid in the second column
   const availableGridW = Math.max(
     180,
     Math.floor(gameRect.width - rowGutterW - gap - paddingSafety)
   );
 
-  // Also consider height: on small screens, don't exceed ~60vh for the grid area
   const availableGridH = Math.floor(window.innerHeight * 0.60);
 
   const maxGridPx = Math.max(160, Math.min(availableGridW, availableGridH));
   const rawCell = Math.floor(maxGridPx / size);
 
-  // Tap-friendly bounds:
-  // - Minimum 18px so clues/marks remain readable
-  // - Maximum 44px so 5x5 doesn’t become comically huge
   return clamp(rawCell, 18, 44);
 }
 
 function buildLayout() {
   const cell = computeCellSize();
 
-  // Set CSS vars (on document root so row/col clues + grid share it)
   document.documentElement.style.setProperty("--ngSize", String(size));
   document.documentElement.style.setProperty("--ngCell", `${cell}px`);
 
-  // Corner sizing depends on clue depth
   const rowClues = currentRowClues();
   const colClues = currentColClues();
   const maxRowClueCount = Math.max(...rowClues.map(c => c.length));
@@ -291,11 +278,9 @@ function buildLayout() {
 
   els.corner.style.width = `${cornerW}px`;
   els.corner.style.height = `${cornerH}px`;
-
   els.rowClues.style.width = `${cornerW}px`;
   els.colClues.style.height = `${cornerH}px`;
 
-  // Slightly scale mark glyph with cell size
   const markFont = clamp(Math.floor(cell * 0.60), 12, 22);
   els.grid.style.setProperty("font-size", `${markFont}px`);
 }
@@ -304,7 +289,6 @@ function renderClues() {
   const rowClues = currentRowClues();
   const colClues = currentColClues();
 
-  // Render row clues
   els.rowClues.innerHTML = "";
   for (let r = 0; r < size; r++) {
     const cell = document.createElement("div");
@@ -323,7 +307,6 @@ function renderClues() {
     els.rowClues.appendChild(cell);
   }
 
-  // Render col clues
   els.colClues.innerHTML = "";
   for (let c = 0; c < size; c++) {
     const cell = document.createElement("div");
@@ -346,7 +329,6 @@ function renderClues() {
 function renderGrid() {
   els.grid.innerHTML = "";
 
-  // Block separators: for larger puzzles, draw thicker lines every 5
   const block = (size >= 10) ? 5 : 0;
 
   for (let i = 0; i < size * size; i++) {
@@ -392,6 +374,15 @@ function renderAll() {
   updateUndoRedoButtons();
 }
 
+/* -------- Drag painting helpers (FIX) -------- */
+function cellIndexFromPoint(clientX, clientY) {
+  const el = document.elementFromPoint(clientX, clientY);
+  const cell = el ? el.closest(".ngCell") : null;
+  if (!cell) return null;
+  const i = Number(cell.dataset.i);
+  return Number.isFinite(i) ? i : null;
+}
+
 function applyCell(i, toVal) {
   const from = state[i];
   if (from === toVal) return false;
@@ -402,6 +393,15 @@ function applyCell(i, toVal) {
   else strokeChanges.get(i).to = toVal;
 
   return true;
+}
+
+function updateCellVisual(i) {
+  const el = els.grid.children[i];
+  if (!el) return;
+  el.classList.toggle("filled", state[i] === 1);
+  el.classList.toggle("marked", state[i] === 2);
+  el.textContent = (state[i] === 2) ? "✕" : "";
+  el.classList.remove("bad");
 }
 
 function beginStroke(targetIndex, forcedTool = null) {
@@ -415,7 +415,7 @@ function beginStroke(targetIndex, forcedTool = null) {
   else paintTo = (cur === 2) ? 0 : 2;
 
   applyCell(targetIndex, paintTo);
-  renderGrid();
+  updateCellVisual(targetIndex);
   renderClueCompletion();
 }
 
@@ -525,30 +525,27 @@ function bindInput() {
   els.grid.addEventListener("contextmenu", (e) => e.preventDefault());
 
   els.grid.addEventListener("pointerdown", (e) => {
-    const cell = e.target.closest(".ngCell");
-    if (!cell) return;
+    const i = cellIndexFromPoint(e.clientX, e.clientY);
+    if (i == null) return;
 
+    // Capture pointer so we keep receiving moves even if finger leaves grid
     els.grid.setPointerCapture(e.pointerId);
-    const i = Number(cell.dataset.i);
-    const forced = (e.button === 2) ? "mark" : null;
 
+    const forced = (e.button === 2) ? "mark" : null;
     beginStroke(i, forced);
     e.preventDefault();
   });
 
   els.grid.addEventListener("pointermove", (e) => {
     if (!isPointerDown) return;
-    const cell = e.target.closest(".ngCell");
-    if (!cell) return;
 
-    const i = Number(cell.dataset.i);
+    // IMPORTANT: hit-test using elementFromPoint (works with pointer capture)
+    const i = cellIndexFromPoint(e.clientX, e.clientY);
+    if (i == null) return;
+
     const changed = applyCell(i, paintTo);
     if (changed) {
-      const el = els.grid.children[i];
-      el.classList.toggle("filled", state[i] === 1);
-      el.classList.toggle("marked", state[i] === 2);
-      el.textContent = (state[i] === 2) ? "✕" : "";
-      el.classList.remove("bad");
+      updateCellVisual(i);
       renderClueCompletion();
     }
   });
@@ -556,6 +553,7 @@ function bindInput() {
   const end = () => commitStroke();
   els.grid.addEventListener("pointerup", end);
   els.grid.addEventListener("pointercancel", end);
+  els.grid.addEventListener("lostpointercapture", end);
 
   els.toolFill.addEventListener("click", () => setTool("fill"));
   els.toolMark.addEventListener("click", () => setTool("mark"));
@@ -596,7 +594,6 @@ let resizeTimer = null;
 function onResize() {
   if (resizeTimer) clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    // Recompute sizing + re-render clues (grid state preserved)
     renderAll();
   }, 80);
 }
