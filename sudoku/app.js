@@ -2,6 +2,7 @@
    + progress persistence (LocalStorage)
    + Continue Last Game button
    + Mobile-friendly layout + Pause overlay Resume button
+   + Completed overlay (separate from pause)
 */
 
 const $ = (id) => document.getElementById(id);
@@ -30,8 +31,14 @@ const btnPause = $("pause");
 const pauseOverlayEl = $("pauseOverlay");
 const btnResume = $("resume");
 
+// Completed overlay
+const completeOverlayEl = $("completeOverlay");
+const btnCompleteNew = $("completeNew");
+const btnCompleteClose = $("completeClose");
+
 let notesMode = false;
 let paused = false;
+let completed = false;
 let currentDifficulty = "medium";
 
 // State
@@ -55,6 +62,10 @@ const STORAGE_LAST = "cf-sudoku:v3:last";
 // elapsed time tracking (persistable)
 let elapsedMs = 0;
 let lastTickAt = 0;
+
+function isLocked() {
+  return paused || completed;
+}
 
 function setStatus(msg, kind = "info") {
   statusEl.textContent = msg;
@@ -132,7 +143,7 @@ function saveProgress() {
   const puzzleStr = currentPuzzleStrFromUrl();
   if (!key || !puzzleStr) return;
 
-  if (!paused) tickElapsed();
+  if (!paused && !completed) tickElapsed();
 
   const payload = {
     v: 3,
@@ -140,6 +151,7 @@ function saveProgress() {
     difficulty: currentDifficulty,
     notesMode,
     paused,
+    completed,
     elapsedMs,
 
     givens,
@@ -187,28 +199,31 @@ function loadProgressIfAny(puzStr) {
   notesMode = !!data.notesMode;
   btnNotes.textContent = `Notes: ${notesMode ? "On" : "Off"}`;
 
-  paused = !!data.paused;
-  applyPausedUi(paused, { silent: true });
-
+  // Restore board state first
   givens = Array.isArray(data.givens) && data.givens.length === 81 ? data.givens.slice() : givens;
   values = data.values.slice();
   solution = data.solution.slice();
-
   notes = Array.from({ length: 81 }, (_, i) => maskToNotes((data.notesMasks && data.notesMasks[i]) || 0));
 
   undoStack = Array.isArray(data.undoStack) ? data.undoStack : [];
   redoStack = Array.isArray(data.redoStack) ? data.redoStack : [];
-
   selected = (typeof data.selected === "number" ? data.selected : -1);
 
   elapsedMs = typeof data.elapsedMs === "number" ? data.elapsedMs : 0;
   startElapsedClock(false);
   timerEl.textContent = formatTime(elapsedMs);
 
+  // Restore completed/paused states (completed overrides pause)
+  completed = !!data.completed;
+  paused = !!data.paused && !completed;
+
+  applyCompletedUi(completed, { silent: true });
+  applyPausedUi(paused, { silent: true });
+
   render();
   updateContinueButton();
 
-  if (!paused) startTimer(false);
+  if (!paused && !completed) startTimer(false);
   else stopTimerOnly();
 
   setStatus("Restored saved progress.", "info");
@@ -255,7 +270,7 @@ function startTimer(reset = false) {
 
   if (timerHandle) clearInterval(timerHandle);
   timerHandle = setInterval(() => {
-    if (paused) return;
+    if (paused || completed) return;
     tickElapsed();
     timerEl.textContent = formatTime(elapsedMs);
   }, 250);
@@ -489,21 +504,50 @@ function updateUndoRedoButtons() {
 
 // -------- Pause UI (overlay outside blurred content) --------
 function applyPausedUi(isPaused, { silent = false } = {}) {
+  // completed overrides pause
+  if (completed && isPaused) return;
+
   paused = isPaused;
   document.body.classList.toggle("isPaused", paused);
   pauseOverlayEl.setAttribute("aria-hidden", paused ? "false" : "true");
 
-  // Pause button only pauses; disabled when paused
-  btnPause.disabled = paused;
+  // Pause button only pauses; disabled when paused or completed
+  btnPause.disabled = paused || completed;
 
   if (paused) {
     stopTimerAndSave();
     if (!silent) setStatus("Paused.", "info");
-    // Focus Resume for accessibility
     setTimeout(() => btnResume?.focus?.(), 0);
   } else {
-    startTimer(false);
+    if (!completed) startTimer(false);
     if (!silent) setStatus("Resumed.", "info");
+    scheduleSave();
+  }
+}
+
+// -------- Completed UI (separate from pause) --------
+function applyCompletedUi(isCompleted, { silent = false } = {}) {
+  completed = isCompleted;
+
+  // If completed, we should not be paused
+  if (completed) {
+    paused = false;
+    document.body.classList.remove("isPaused");
+    pauseOverlayEl.setAttribute("aria-hidden", "true");
+  }
+
+  document.body.classList.toggle("isCompleted", completed);
+  completeOverlayEl.setAttribute("aria-hidden", completed ? "false" : "true");
+
+  // Pause disabled while completed
+  btnPause.disabled = paused || completed;
+
+  if (completed) {
+    stopTimerAndSave();
+    if (!silent) setStatus("Solved! 🎉", "good");
+    setTimeout(() => btnCompleteNew?.focus?.(), 0);
+  } else {
+    if (!silent) setStatus("Ready.", "info");
     scheduleSave();
   }
 }
@@ -580,14 +624,14 @@ function render() {
 }
 
 function selectCell(i) {
-  if (paused) return;
+  if (isLocked()) return;
   if (selected === i) return;
   selected = i;
   render();
 }
 
 function setValue(i, v) {
-  if (paused) return;
+  if (isLocked()) return;
   if (givens[i]) return;
 
   const prevVal = values[i];
@@ -614,9 +658,9 @@ function setValue(i, v) {
 
   if (isComplete()) {
     if (values.every((val, idx) => val === solution[idx])) {
-      setStatus("Solved! 🎉", "good");
-      stopTimerAndSave();
-      applyPausedUi(true); // locks board on solve
+      // IMPORTANT: solved should NOT become paused
+      applyPausedUi(false, { silent: true });
+      applyCompletedUi(true);
     } else {
       setStatus("Filled, but not correct yet.", "warn");
     }
@@ -624,7 +668,7 @@ function setValue(i, v) {
 }
 
 function onCellKeydown(e, i) {
-  if (paused) return;
+  if (isLocked()) return;
 
   if (e.key >= "1" && e.key <= "9") {
     e.preventDefault();
@@ -647,7 +691,7 @@ function onCellKeydown(e, i) {
 }
 
 function checkConflicts() {
-  if (paused) return;
+  if (isLocked()) return;
   const cells = boardEl.querySelectorAll(".cell");
   cells.forEach((cell) => cell.classList.remove("conflict"));
 
@@ -665,6 +709,8 @@ function checkConflicts() {
 }
 
 function resetToGivens() {
+  applyCompletedUi(false, { silent: true });
+
   for (let i = 0; i < 81; i++) {
     values[i] = givens[i] ? values[i] : 0;
     notes[i].clear();
@@ -684,6 +730,8 @@ function resetToGivens() {
 }
 
 function fillSolution() {
+  applyCompletedUi(false, { silent: true });
+
   for (let i = 0; i < 81; i++) {
     values[i] = solution[i];
     notes[i].clear();
@@ -693,14 +741,14 @@ function fillSolution() {
   selected = -1;
 
   setStatus("Solved (revealed).", "info");
-  stopTimerAndSave();
-  applyPausedUi(true);
+  applyPausedUi(false, { silent: true });
+  applyCompletedUi(true, { silent: true }); // show completed overlay (timer stops)
   render();
   saveProgress();
 }
 
 function undo() {
-  if (paused) return;
+  if (isLocked()) return;
   const a = undoStack.pop();
   if (!a) return;
   applyAction(a, true);
@@ -711,7 +759,7 @@ function undo() {
 }
 
 function redo() {
-  if (paused) return;
+  if (isLocked()) return;
   const a = redoStack.pop();
   if (!a) return;
   applyAction(a, false);
@@ -722,7 +770,7 @@ function redo() {
 }
 
 function toggleNotes() {
-  if (paused) return;
+  if (isLocked()) return;
   notesMode = !notesMode;
   btnNotes.textContent = `Notes: ${notesMode ? "On" : "Off"}`;
   setStatus(notesMode ? "Notes mode enabled." : "Notes mode disabled.");
@@ -730,7 +778,7 @@ function toggleNotes() {
 }
 
 function eraseSelected() {
-  if (paused) return;
+  if (isLocked()) return;
   if (selected === -1) return;
   setValue(selected, 0);
 }
@@ -740,6 +788,8 @@ function isComplete() {
 }
 
 function setFromPuzzle(puz, sol, diffKey) {
+  applyCompletedUi(false, { silent: true });
+
   currentDifficulty = diffKey || currentDifficulty;
   setNewDifficultyLabel(currentDifficulty);
 
@@ -760,7 +810,6 @@ function setFromPuzzle(puz, sol, diffKey) {
   window.history.replaceState({}, "", u.toString());
 
   applyPausedUi(false);
-
   startTimer(true);
 
   setStatus("New game started.", "info");
@@ -771,6 +820,9 @@ function setFromPuzzle(puz, sol, diffKey) {
 }
 
 function newGame(diffKey) {
+  applyCompletedUi(false, { silent: true });
+  applyPausedUi(false, { silent: true });
+
   setStatus("Generating puzzle…", "info");
   const sol = generateFullSolution();
   const puz = makePuzzleFromSolution(sol, diffKey);
@@ -781,8 +833,8 @@ function newGame(diffKey) {
 
 // Keypad numbers
 document.addEventListener("click", (e) => {
-  // If paused, ignore everything except Resume (overlay handles it)
-  if (paused) return;
+  // If paused/completed, ignore everything except overlay buttons
+  if (isLocked()) return;
 
   const numBtn = e.target.closest(".keyNum");
   if (numBtn) {
@@ -805,14 +857,25 @@ btnUndo.addEventListener("click", undo);
 btnRedo.addEventListener("click", redo);
 btnErase.addEventListener("click", eraseSelected);
 
-// Pause only pauses
+// Pause only pauses (not when completed)
 btnPause.addEventListener("click", () => {
-  if (paused) return;
+  if (paused || completed) return;
   applyPausedUi(true);
 });
 
 // Resume lives on overlay
 btnResume.addEventListener("click", () => applyPausedUi(false));
+
+// Completed overlay buttons
+btnCompleteNew?.addEventListener("click", () => {
+  applyCompletedUi(false, { silent: true });
+  newGame(currentDifficulty);
+});
+btnCompleteClose?.addEventListener("click", () => {
+  // Close overlay and leave board interactive (still solved)
+  applyCompletedUi(false, { silent: true });
+  setStatus("Solved! 🎉", "good");
+});
 
 // Menu items
 btnContinue.addEventListener("click", () => {
@@ -845,7 +908,7 @@ document.addEventListener("visibilitychange", () => {
 
 // click outside board to clear selection
 document.addEventListener("mousedown", (e) => {
-  if (paused) return;
+  if (isLocked()) return;
   if (!e.target.closest(".cell") && !e.target.closest(".keypadRow") && !e.target.closest(".controlRow") && !e.target.closest(".gameTop")) {
     selected = -1;
     render();

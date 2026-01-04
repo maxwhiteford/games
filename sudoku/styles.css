@@ -236,6 +236,54 @@ body.isPaused .pauseOverlay{ display: flex; }
 }
 .resumeBtn:hover{ border-color: rgba(122,162,255,0.9); }
 
+/* ---- Completed overlay (separate from pause) ---- */
+body.isCompleted #gameContent{
+  pointer-events: none;
+  filter: blur(5px) saturate(0.95) brightness(0.95);
+  transform: translateZ(0);
+}
+
+.completeOverlay{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items:center;
+  justify-content:center;
+  background: rgba(0,0,0,0.40);
+  z-index: 999;
+  padding: 18px;
+}
+
+body.isCompleted .completeOverlay{
+  display: flex;
+}
+
+.completeCard{
+  background: rgba(10,14,30,0.96);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding:16px 18px;
+  text-align:center;
+  width: min(360px, 92vw);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.55);
+}
+
+.completeTitle{font-size:18px; font-weight:800; margin-bottom:6px;}
+.completeHint{color: rgba(233,236,255,0.78); font-size:13px; margin-bottom: 12px;}
+
+.ghostBtn{
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.ghostBtn:hover{
+  border-color: rgba(122,162,255,0.7);
+}
+
+
 /* Cell sizing breakpoints */
 @media (max-width: 480px){
   :root{ --cell: 42px; }
