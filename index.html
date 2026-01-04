@@ -51,15 +51,5 @@
   </footer>
 
   <script src="./common.js"></script>
-  <script>
-    // Register SW once, at the site root
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", async () => {
-        try {
-          await navigator.serviceWorker.register("./sw.js", { scope: "./" });
-        } catch {}
-      });
-    }
-  </script>
 </body>
 </html>

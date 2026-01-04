@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "2026-01-04-01"; // bump this every deploy (or inject at build-time)
 const PRECACHE = `games-precache-${CACHE_VERSION}`;
 const RUNTIME  = `games-runtime-${CACHE_VERSION}`;
 
@@ -24,6 +24,12 @@ const PRECACHE_URLS = [
   "./nonogram/app.js"
 ];
 
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(PRECACHE);
@@ -40,9 +46,53 @@ self.addEventListener("activate", (event) => {
         .filter(k => ![PRECACHE, RUNTIME].includes(k))
         .map(k => caches.delete(k))
     );
-    self.clients.claim();
+    await self.clients.claim();
   })());
 });
+
+function isNetworkFirstAsset(url) {
+  // Make the "app shell" update immediately when online
+  if (url.pathname.endsWith(".js")) return true;
+  if (url.pathname.endsWith(".css")) return true;
+
+  // Optional: force HTML to be network-first too (helps refresh pick up new markup)
+  if (url.pathname.endsWith(".html")) return true;
+
+  // Optional: treat webmanifest as network-first so install metadata updates quickly
+  if (url.pathname.endsWith(".webmanifest")) return true;
+
+  return false;
+}
+
+async function networkFirst(req) {
+  const cache = await caches.open(RUNTIME);
+  try {
+    const res = await fetch(req, { cache: "no-store" }); // avoid browser HTTP cache
+    if (res && res.ok && res.type === "basic") {
+      cache.put(req, res.clone());
+    }
+    return res;
+  } catch {
+    const cached = await caches.match(req);
+    return cached || new Response("", { status: 504, statusText: "Offline" });
+  }
+}
+
+async function staleWhileRevalidate(req) {
+  const cached = await caches.match(req);
+  const cache = await caches.open(RUNTIME);
+
+  const fetchPromise = fetch(req)
+    .then((res) => {
+      if (res && res.ok && res.type === "basic") {
+        cache.put(req, res.clone());
+      }
+      return res;
+    })
+    .catch(() => null);
+
+  return cached || (await fetchPromise) || new Response("", { status: 504, statusText: "Offline" });
+}
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -51,16 +101,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navigation: try network, fallback to cached page, then to cached root
+  // Navigation: network-first, fallback to cached page
   if (req.mode === "navigate") {
     event.respondWith((async () => {
       try {
-        const net = await fetch(req);
+        const net = await fetch(req, { cache: "no-store" });
         const cache = await caches.open(RUNTIME);
         cache.put(req, net.clone());
         return net;
       } catch {
-        // Try exact match first (e.g. /sudoku/), else fallback to root
         const cachedExact = await caches.match(req);
         if (cachedExact) return cachedExact;
 
@@ -71,20 +120,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Asset: cache-first
-  event.respondWith((async () => {
-    const cached = await caches.match(req);
-    if (cached) return cached;
-
-    try {
-      const res = await fetch(req);
-      if (res && res.ok && res.type === "basic") {
-        const cache = await caches.open(RUNTIME);
-        cache.put(req, res.clone());
-      }
-      return res;
-    } catch {
-      return new Response("", { status: 504, statusText: "Offline" });
-    }
-  })());
+  // Assets: network-first for JS/CSS/HTML/manifest, SWR for everything else
+  if (isNetworkFirstAsset(url)) {
+    event.respondWith(networkFirst(req));
+  } else {
+    event.respondWith(staleWhileRevalidate(req));
+  }
 });
